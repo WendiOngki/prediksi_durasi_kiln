@@ -11,7 +11,7 @@ st.set_page_config(
 
 @st.cache_resource
 def load():
-    with open('model_full_pipeline.pkl', 'rb') as f:
+    with open('model_sklearn.pkl', 'rb') as f:
         return pickle.load(f)
 
 model = load()
