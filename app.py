@@ -1,7 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import pickle
 
 st.set_page_config(
     page_title="Prediksi Durasi Pengeringan Kayu",
@@ -9,10 +7,14 @@ st.set_page_config(
     layout="centered"
 )
 
+import onnxruntime as rt
+import numpy as np
+
 @st.cache_resource
 def load():
-    with open('model_sklearn.pkl', 'rb') as f:
-        return pickle.load(f)
+    return rt.InferenceSession('model_kiln.onnx')
+
+model = load()
 
 model = load()
 
