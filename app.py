@@ -68,7 +68,7 @@ if submitted:
         st.stop()
 
     total_lem = sum(komposisi.values())
-    props     = {f'prop_{t}': komposisi.get(t, 0) / total_lem for t in TEBAL_BINS}
+    props = {f'prop_{str(t).replace(".", "_")}': komposisi.get(t, 0) / total_lem for t in TEBAL_BINS}
     tebal_arr = np.repeat(list(komposisi.keys()), list(komposisi.values())).astype(float)
 
     ket_mean = float(np.mean(tebal_arr))
@@ -104,7 +104,9 @@ if submitted:
         'prop_tipis'    : props['prop_2.0'] + props['prop_2.5'],
         'prop_tebal_ext': props['prop_5.0'] + props['prop_8.0'],
         'rasio_tebal'   : (props['prop_5.0'] + props['prop_8.0']) / (props['prop_2.0'] + props['prop_2.5'] + 1e-6),
-        **props,
+        'prop_tipis'    : props['prop_2_0'] + props['prop_2_5'],
+        'prop_tebal_ext': props['prop_5_0'] + props['prop_8_0'],
+        'rasio_tebal'   : (props['prop_5_0'] + props['prop_8_0']) / (props['prop_2_0'] + props['prop_2_5'] + 1e-6),
     }
 
     df_input = pd.DataFrame([row])
