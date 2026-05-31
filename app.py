@@ -113,13 +113,15 @@ if submitted:
         try:
             str_cols = ['jenis_kayu', 'no_kiln', 'bulan_in', 'musim']
             num_cols  = [c for c in df_input.columns if c not in str_cols]
-
+            
             input_feed = {}
             for c in str_cols:
-                input_feed[c] = df_input[c].astype(str).values.reshape(-1, 1)
+                val = np.array(df_input[c].tolist(), dtype=object).reshape(-1, 1)
+                input_feed[c] = val
             for c in num_cols:
-                input_feed[c] = df_input[c].astype(np.float32).values.reshape(-1, 1)
-
+                val = np.array(df_input[c].tolist(), dtype=np.float32).reshape(-1, 1)
+                input_feed[c] = val
+            
             pred = model.run(None, input_feed)
             durasi = round(float(pred[0][0]), 1)
         except Exception as e:
