@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from pycaret.regression import load_model, predict_model
 
 # ── Konfigurasi halaman ────────────────────────────────────────────────────
 st.set_page_config(
@@ -11,11 +10,17 @@ st.set_page_config(
 )
 
 # ── Load model (cache agar tidak reload setiap interaksi) ──────────────────
+import pickle
+
 @st.cache_resource
 def load():
-    return load_model('model_kiln_v1')
+    with open('pipeline_kiln.pkl', 'rb') as f:
+        pipeline = pickle.load(f)
+    with open('estimator_kiln.pkl', 'rb') as f:
+        estimator = pickle.load(f)
+    return pipeline, estimator
 
-model = load()
+pipeline, estimator = load()
 
 # ── Judul ──────────────────────────────────────────────────────────────────
 st.title("🪵 Prediksi Durasi Pengeringan Kayu Kiln")
@@ -183,8 +188,8 @@ if submitted:
     # ── Prediksi ───────────────────────────────────────────────────────────
     with st.spinner("Menghitung prediksi..."):
         try:
-            hasil = predict_model(model, data=df_input)
-            durasi = round(float(hasil['prediction_label'].values[0]), 1)
+            df_transformed = pipeline.transform(df_input)
+            durasi = round(float(estimator.predict(df_transformed)[0]), 1)
         except Exception as e:
             st.error(f"Error saat prediksi: {e}")
             st.stop()
