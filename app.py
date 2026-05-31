@@ -127,7 +127,8 @@ if submitted:
                 input_feed[c] = np.array(df_input[c].tolist(), dtype=np.float32).reshape(-1, 1)
 
             pred   = model.run(None, input_feed)
-            durasi = round(float(pred[0][0]), 1)
+            hasil  = pred[0]
+            durasi = round(float(np.array(hasil).flatten()[0]), 1)
         except Exception as e:
             st.error(f"Error prediksi: {e}")
             st.stop()
