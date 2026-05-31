@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import onnxruntime as rt
+import numpy as np
 
 st.set_page_config(
     page_title="Prediksi Durasi Pengeringan Kayu",
@@ -7,14 +9,9 @@ st.set_page_config(
     layout="centered"
 )
 
-import onnxruntime as rt
-import numpy as np
-
 @st.cache_resource
 def load():
     return rt.InferenceSession('model_kiln.onnx')
-
-model = load()
 
 model = load()
 
@@ -41,7 +38,7 @@ with st.form("input_form"):
     st.subheader("🌤️ Kondisi Cuaca")
     col3, col4 = st.columns(2)
     with col3:
-        kelembaban_pct = st.slider("Kelembaban (%)",      40, 100, 75)
+        kelembaban_pct = st.slider("Kelembaban (%)", 40, 100, 75)
         curah_hujan_mm = st.number_input("Curah Hujan (mm)", min_value=0.0, max_value=50.0, value=3.0, step=0.5)
     with col4:
         suhu_maks_c = st.number_input("Suhu Maksimum (°C)", min_value=20.0, max_value=45.0, value=32.0, step=0.5)
@@ -68,7 +65,7 @@ if submitted:
         st.stop()
 
     total_lem = sum(komposisi.values())
-    props = {f'prop_{str(t).replace(".", "_")}': komposisi.get(t, 0) / total_lem for t in TEBAL_BINS}
+    props     = {f'prop_{str(t).replace(".", "_")}': komposisi.get(t, 0) / total_lem for t in TEBAL_BINS}
     tebal_arr = np.repeat(list(komposisi.keys()), list(komposisi.values())).astype(float)
 
     ket_mean = float(np.mean(tebal_arr))
@@ -78,32 +75,42 @@ if submitted:
     musim    = '1' if bulan_in in [11, 12, 1, 2, 3, 4] else '0'
 
     row = {
+        # Kategorikal
         'jenis_kayu'    : jenis_kayu,
         'no_kiln'       : str(no_kiln),
-        'vol_total_m3'  : vol_total_m3,
-        'total_lembar'  : total_lembar,
-        'kelembaban_pct': kelembaban_pct,
-        'curah_hujan_mm': curah_hujan_mm,
-        'suhu_maks_c'   : suhu_maks_c,
-        'suhu_min_c'    : suhu_min_c,
         'bulan_in'      : str(bulan_in),
+        'musim'         : musim,
+        # Numerik
+        'vol_total_m3'  : float(vol_total_m3),
+        'total_lembar'  : float(total_lembar),
+        'kelembaban_pct': float(kelembaban_pct),
+        'curah_hujan_mm': float(curah_hujan_mm),
+        'suhu_maks_c'   : float(suhu_maks_c),
+        'suhu_min_c'    : float(suhu_min_c),
         'ket_mean'      : ket_mean,
         'ket_max'       : ket_max,
         'ket_min'       : ket_min,
         'ket_std'       : ket_std,
-        'n_ketebalan'   : len(komposisi),
-        'vol_m3_total'  : vol_total_m3,
-        'lembar_total'  : total_lembar,
-        'jumlah_asal'   : jumlah_asal,
-        'vol_per_lembar': vol_total_m3 / max(total_lembar, 1),
-        'delta_suhu'    : suhu_maks_c - suhu_min_c,
-        'musim'         : musim,
-        'lembab_x_tebal': kelembaban_pct * ket_max,
-        'hujan_x_lembab': curah_hujan_mm * kelembaban_pct,
-        'tebal_x_vol'   : ket_mean * vol_total_m3,
+        'n_ketebalan'   : float(len(komposisi)),
+        'vol_m3_total'  : float(vol_total_m3),
+        'lembar_total'  : float(total_lembar),
+        'jumlah_asal'   : float(jumlah_asal),
+        'vol_per_lembar': float(vol_total_m3) / max(float(total_lembar), 1),
+        'delta_suhu'    : float(suhu_maks_c) - float(suhu_min_c),
+        'lembab_x_tebal': float(kelembaban_pct) * ket_max,
+        'hujan_x_lembab': float(curah_hujan_mm) * float(kelembaban_pct),
+        'tebal_x_vol'   : ket_mean * float(vol_total_m3),
         'prop_tipis'    : props['prop_2_0'] + props['prop_2_5'],
         'prop_tebal_ext': props['prop_5_0'] + props['prop_8_0'],
         'rasio_tebal'   : (props['prop_5_0'] + props['prop_8_0']) / (props['prop_2_0'] + props['prop_2_5'] + 1e-6),
+        # Proporsi ketebalan — wajib ada semua 7 kolom
+        'prop_2_0'      : props['prop_2_0'],
+        'prop_2_5'      : props['prop_2_5'],
+        'prop_3_0'      : props['prop_3_0'],
+        'prop_3_5'      : props['prop_3_5'],
+        'prop_4_0'      : props['prop_4_0'],
+        'prop_5_0'      : props['prop_5_0'],
+        'prop_8_0'      : props['prop_8_0'],
     }
 
     df_input = pd.DataFrame([row])
@@ -111,17 +118,15 @@ if submitted:
     with st.spinner("Menghitung prediksi..."):
         try:
             str_cols = ['jenis_kayu', 'no_kiln', 'bulan_in', 'musim']
-            num_cols  = [c for c in df_input.columns if c not in str_cols]
-            
+            num_cols = [c for c in df_input.columns if c not in str_cols]
+
             input_feed = {}
             for c in str_cols:
-                val = np.array(df_input[c].tolist(), dtype=object).reshape(-1, 1)
-                input_feed[c] = val
+                input_feed[c] = np.array(df_input[c].tolist(), dtype=object).reshape(-1, 1)
             for c in num_cols:
-                val = np.array(df_input[c].tolist(), dtype=np.float32).reshape(-1, 1)
-                input_feed[c] = val
-            
-            pred = model.run(None, input_feed)
+                input_feed[c] = np.array(df_input[c].tolist(), dtype=np.float32).reshape(-1, 1)
+
+            pred   = model.run(None, input_feed)
             durasi = round(float(pred[0][0]), 1)
         except Exception as e:
             st.error(f"Error prediksi: {e}")
